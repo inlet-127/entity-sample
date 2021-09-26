@@ -74,7 +74,7 @@ public abstract class BaseDao<T extends BaseEntity> {
 	 * @return エンティティクラス
 	 */
 	@SuppressWarnings("unchecked")
-	protected Class<T> getEntityType() {
+	protected final Class<T> getEntityType() {
 		Class<?> clazz = this.getClass();
 		Type type = clazz.getGenericSuperclass();
 		ParameterizedType pt = (ParameterizedType) type;
@@ -85,7 +85,7 @@ public abstract class BaseDao<T extends BaseEntity> {
 	/**
 	 * DBコネクションを確立する。
 	 * 
-	 * @return
+	 * @return DBコネクション
 	 * @throws SQLException
 	 * @throws NamingException
 	 */
@@ -155,13 +155,14 @@ public abstract class BaseDao<T extends BaseEntity> {
 		final String getterIdentifier = "get";
 		ResultSetMetaData rsmd = dbResult.getMetaData();
 		try {
-			for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-				String getterMethodName = getterIdentifier
-						+ replaseResultSetMethod(mapper.get(rsmd.getColumnName(i)).getSimpleName());
-				String setterMethodName = setterIdentifier + convertToMethodName(rsmd.getColumnName(i));
-				Method getter = dbResult.getClass().getMethod(getterMethodName, String.class);
-				Method setter = entity.getClass().getMethod(setterMethodName, mapper.get(rsmd.getColumnName(i)));
-				while (dbResult.next()) {
+			while (dbResult.next()) {
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					String getterMethodName = getterIdentifier
+							+ replaseResultSetMethod(mapper.get(rsmd.getColumnName(i)).getSimpleName());
+					String setterMethodName = setterIdentifier + convertToMethodName(rsmd.getColumnName(i));
+					Method getter = dbResult.getClass().getMethod(getterMethodName, String.class);
+					Method setter = entity.getClass().getMethod(setterMethodName, mapper.get(rsmd.getColumnName(i)));
+
 					// 取得したレコードをエンティティクラスに格納
 					setter.invoke(entity, getter.invoke(dbResult, rsmd.getColumnName(i)));
 				}
