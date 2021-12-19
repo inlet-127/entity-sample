@@ -9,8 +9,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -70,7 +72,7 @@ public abstract class BaseDao<T extends BaseEntity> {
 
 	/**
 	 * エンティティクラスを取得する。
-	 * 
+	 *
 	 * @return エンティティクラス
 	 */
 	@SuppressWarnings("unchecked")
@@ -84,7 +86,7 @@ public abstract class BaseDao<T extends BaseEntity> {
 
 	/**
 	 * DBコネクションを確立する。
-	 * 
+	 *
 	 * @return DBコネクション
 	 * @throws SQLException
 	 * @throws NamingException
@@ -95,14 +97,13 @@ public abstract class BaseDao<T extends BaseEntity> {
 
 	/**
 	 * SQLを実行する
-	 * 
+	 *
 	 * @param sql
 	 * @return レコード
 	 * @throws SQLException SQLの実行に失敗したとき
 	 */
-	public T exec_query(SqlBuilder sql) throws SQLException {
-		try (Connection con = createConnection()) {
-			PreparedStatement ps = con.prepareStatement(sql.getQuery());
+	public List<T> exec_query(SqlBuilder sql) throws SQLException {
+		try (Connection con = createConnection(); PreparedStatement ps = con.prepareStatement(sql.getQuery());) {
 			return getRecord(ps.executeQuery(), createEntity());
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -144,15 +145,16 @@ public abstract class BaseDao<T extends BaseEntity> {
 
 	/**
 	 * レコードを取得する。
-	 * 
+	 *
 	 * @param dbResult ResultSetの生データ
 	 * @param entity   エンティティクラスのインスタンス
 	 * @return レコード
 	 * @throws SQLException ResultSetからのレコード取得に失敗したとき
 	 */
-	private T getRecord(ResultSet dbResult, T entity) throws SQLException {
+	private List<T> getRecord(ResultSet dbResult, T entity) throws SQLException {
 		final String setterIdentifier = "set";
 		final String getterIdentifier = "get";
+		List<T> result = new ArrayList<>();
 		ResultSetMetaData rsmd = dbResult.getMetaData();
 		try {
 			while (dbResult.next()) {
@@ -166,16 +168,17 @@ public abstract class BaseDao<T extends BaseEntity> {
 					// 取得したレコードをエンティティクラスに格納
 					setter.invoke(entity, getter.invoke(dbResult, rsmd.getColumnName(i)));
 				}
+				result.add(entity);
 			}
 		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
-		return entity;
+		return result;
 	}
 
 	/**
 	 * メソッド名の命名規則に合わせて変換する
-	 * 
+	 *
 	 * @param val 変換対象の文字列
 	 * @return メソッド名
 	 */
@@ -187,7 +190,7 @@ public abstract class BaseDao<T extends BaseEntity> {
 
 	/**
 	 * エンティティクラスのフィールドの型名をResultSetのメソッド名にあわせて変換する
-	 * 
+	 *
 	 * @param simpleClassName 簡易クラス名称
 	 * @return 対応するResultSetのメソッド名称
 	 */
