@@ -92,7 +92,7 @@ public abstract class BaseDao<T extends BaseEntity> {
 	 * @throws NamingException
 	 */
 	private Connection createConnection() throws SQLException {
-		return createDataSource().getConnection();
+		return lookupDataSource().getConnection();
 	}
 
 	/**
@@ -104,9 +104,8 @@ public abstract class BaseDao<T extends BaseEntity> {
 	 */
 	public List<T> exec_query(SqlBuilder sql) throws SQLException {
 		try (Connection con = createConnection(); PreparedStatement ps = con.prepareStatement(sql.getQuery());) {
-			return getRecord(ps.executeQuery(), createEntity());
+			return getRecord(ps.executeQuery());
 		} catch (SQLException e) {
-			e.printStackTrace();
 			throw e;
 		}
 	}
@@ -116,12 +115,12 @@ public abstract class BaseDao<T extends BaseEntity> {
 	 *
 	 * @return データソース
 	 */
-	private DataSource createDataSource() {
+	private DataSource lookupDataSource() {
 		DataSource ds;
 		try {
 			ds = (DataSource) context.lookup(DataSourceFactory.JNDI_DB_IDENTIFIER);
 		} catch (NamingException e) {
-			throw new AssertionError("JNDIリソースが見つかりません。");
+			throw new RuntimeException("JNDIリソースが見つかりません。");
 		}
 		return Objects.requireNonNull(ds);
 	}
@@ -151,13 +150,14 @@ public abstract class BaseDao<T extends BaseEntity> {
 	 * @return レコード
 	 * @throws SQLException ResultSetからのレコード取得に失敗したとき
 	 */
-	private List<T> getRecord(ResultSet dbResult, T entity) throws SQLException {
+	private List<T> getRecord(ResultSet dbResult) throws SQLException {
 		final String setterIdentifier = "set";
 		final String getterIdentifier = "get";
 		List<T> result = new ArrayList<>();
 		ResultSetMetaData rsmd = dbResult.getMetaData();
 		try {
 			while (dbResult.next()) {
+				T entity = createEntity();
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					String getterMethodName = getterIdentifier
 							+ replaseResultSetMethod(mapper.get(rsmd.getColumnName(i)).getSimpleName());
